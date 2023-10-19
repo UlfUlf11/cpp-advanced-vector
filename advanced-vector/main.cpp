@@ -1,119 +1,106 @@
-﻿#include "vector.h"
+#include "vector.h"
 
 #include <iostream>
 #include <stdexcept>
 #include <string>
 
-namespace
-{
+namespace {
 
-    // "Магическое" число, используемое для отслеживания живости объекта
-    inline const uint32_t DEFAULT_COOKIE = 0xdeadbeef;
+// "Магическое" число, используемое для отслеживания живости объекта
+inline const uint32_t DEFAULT_COOKIE = 0xdeadbeef;
 
-    struct TestObj
-    {
-        TestObj() = default;
-        TestObj(const TestObj& other) = default;
-        TestObj& operator=(const TestObj& other) = default;
-        TestObj(TestObj&& other) = default;
-        TestObj& operator=(TestObj&& other) = default;
-        ~TestObj()
-        {
-            cookie = 0;
-        }
-        [[nodiscard]] bool IsAlive() const noexcept
-        {
-            return cookie == DEFAULT_COOKIE;
-        }
-        uint32_t cookie = DEFAULT_COOKIE;
-    };
+struct TestObj {
+    TestObj() = default;
+    TestObj(const TestObj& other) = default;
+    TestObj& operator=(const TestObj& other) = default;
+    TestObj(TestObj&& other) = default;
+    TestObj& operator=(TestObj&& other) = default;
+    ~TestObj() {
+        cookie = 0;
+    }
+    [[nodiscard]] bool IsAlive() const noexcept {
+        return cookie == DEFAULT_COOKIE;
+    }
+    uint32_t cookie = DEFAULT_COOKIE;
+};
 
-    struct Obj
-    {
-        Obj()
-        {
-            if (default_construction_throw_countdown > 0)
-            {
-                if (--default_construction_throw_countdown == 0)
-                {
-                    throw std::runtime_error("Oops");
-                }
-            }
-            ++num_default_constructed;
-        }
-
-        explicit Obj(int id)
-            : id(id)  //
-        {
-            ++num_constructed_with_id;
-        }
-
-        Obj(int id, std::string name)
-            : id(id)
-            , name(std::move(name))  //
-        {
-            ++num_constructed_with_id_and_name;
-        }
-
-        Obj(const Obj& other)
-            : id(other.id)  //
-        {
-            if (other.throw_on_copy)
-            {
+struct Obj {
+    Obj() {
+        if (default_construction_throw_countdown > 0) {
+            if (--default_construction_throw_countdown == 0) {
                 throw std::runtime_error("Oops");
             }
-            ++num_copied;
         }
+        ++num_default_constructed;
+    }
 
-        Obj(Obj&& other) noexcept
-            : id(other.id)  //
-        {
-            ++num_moved;
+    explicit Obj(int id)
+        : id(id)  //
+    {
+        ++num_constructed_with_id;
+    }
+
+    Obj(int id, std::string name)
+        : id(id)
+        , name(std::move(name))  //
+    {
+        ++num_constructed_with_id_and_name;
+    }
+
+    Obj(const Obj& other)
+        : id(other.id)  //
+    {
+        if (other.throw_on_copy) {
+            throw std::runtime_error("Oops");
         }
+        ++num_copied;
+    }
 
-        Obj& operator=(const Obj& other) = default;
-        Obj& operator=(Obj&& other) = default;
+    Obj(Obj&& other) noexcept
+        : id(other.id)  //
+    {
+        ++num_moved;
+    }
 
-        ~Obj()
-        {
-            ++num_destroyed;
-            id = 0;
-        }
+    Obj& operator=(const Obj& other) = default;
+    Obj& operator=(Obj&& other) = default;
 
-        static int GetAliveObjectCount()
-        {
-            return num_default_constructed + num_copied + num_moved + num_constructed_with_id
-                + num_constructed_with_id_and_name - num_destroyed;
-        }
+    ~Obj() {
+        ++num_destroyed;
+        id = 0;
+    }
 
-        static void ResetCounters()
-        {
-            default_construction_throw_countdown = 0;
-            num_default_constructed = 0;
-            num_copied = 0;
-            num_moved = 0;
-            num_destroyed = 0;
-            num_constructed_with_id = 0;
-            num_constructed_with_id_and_name = 0;
-        }
+    static int GetAliveObjectCount() {
+        return num_default_constructed + num_copied + num_moved + num_constructed_with_id
+            + num_constructed_with_id_and_name - num_destroyed;
+    }
 
-        bool throw_on_copy = false;
-        int id = 0;
-        std::string name;
+    static void ResetCounters() {
+        default_construction_throw_countdown = 0;
+        num_default_constructed = 0;
+        num_copied = 0;
+        num_moved = 0;
+        num_destroyed = 0;
+        num_constructed_with_id = 0;
+        num_constructed_with_id_and_name = 0;
+    }
 
-        static inline int default_construction_throw_countdown = 0;
-        static inline int num_default_constructed = 0;
-        static inline int num_constructed_with_id = 0;
-        static inline int num_constructed_with_id_and_name = 0;
-        static inline int num_copied = 0;
-        static inline int num_moved = 0;
-        static inline int num_destroyed = 0;
-    };
+    bool throw_on_copy = false;
+    int id = 0;
+    std::string name;
+
+    static inline int default_construction_throw_countdown = 0;
+    static inline int num_default_constructed = 0;
+    static inline int num_constructed_with_id = 0;
+    static inline int num_constructed_with_id_and_name = 0;
+    static inline int num_copied = 0;
+    static inline int num_moved = 0;
+    static inline int num_destroyed = 0;
+};
 
 }  // namespace
 
-void Test1()
-{
+void Test1() {
     Obj::ResetCounters();
     const size_t SIZE = 100500;
     const size_t INDEX = 10;
@@ -168,22 +155,16 @@ void Test1()
     assert(Obj::GetAliveObjectCount() == 0);
 }
 
-void Test2()
-{
+void Test2() {
     const size_t SIZE = 100;
     Obj::ResetCounters();
     {
         Obj::default_construction_throw_countdown = SIZE / 2;
-        try
-        {
+        try {
             Vector<Obj> v(SIZE);
             assert(false && "Exception is expected");
-        }
-        catch (const std::runtime_error&)
-        {
-        }
-        catch (...)
-        {
+        } catch (const std::runtime_error&) {
+        } catch (...) {
             // Unexpected error
             assert(false && "Unexpected exception");
         }
@@ -193,18 +174,13 @@ void Test2()
     Obj::ResetCounters();
     {
         Vector<Obj> v(SIZE);
-        try
-        {
+        try {
             v[SIZE / 2].throw_on_copy = true;
             Vector<Obj> v_copy(v);
             assert(false && "Exception is expected");
-        }
-        catch (const std::runtime_error&)
-        {
+        } catch (const std::runtime_error&) {
             assert(Obj::num_copied == SIZE / 2);
-        }
-        catch (...)
-        {
+        } catch (...) {
             // Unexpected error
             assert(false && "Unexpected exception");
         }
@@ -213,13 +189,10 @@ void Test2()
     Obj::ResetCounters();
     {
         Vector<Obj> v(SIZE);
-        try
-        {
+        try {
             v[SIZE - 1].throw_on_copy = true;
             v.Reserve(SIZE * 2);
-        }
-        catch (...)
-        {
+        } catch (...) {
             // Unexpected error
             assert(false && "Unexpected exception");
         }
@@ -229,8 +202,7 @@ void Test2()
     }
 }
 
-void Test3()
-{
+void Test3() {
     const size_t MEDIUM_SIZE = 100;
     const size_t LARGE_SIZE = 250;
     const int ID = 42;
@@ -302,8 +274,7 @@ void Test3()
     }
 }
 
-void Test4()
-{
+void Test4() {
     const size_t ID = 42;
     const size_t SIZE = 100'500;
     {
@@ -329,7 +300,7 @@ void Test4()
     {
         Obj::ResetCounters();
         Vector<Obj> v(SIZE);
-        Obj o{ ID };
+        Obj o{ID};
         v.PushBack(o);
         assert(v.Size() == SIZE + 1);
         assert(v.Capacity() == SIZE * 2);
@@ -343,7 +314,7 @@ void Test4()
     {
         Obj::ResetCounters();
         Vector<Obj> v(SIZE);
-        v.PushBack(Obj{ ID });
+        v.PushBack(Obj{ID});
         assert(v.Size() == SIZE + 1);
         assert(v.Capacity() == SIZE * 2);
         assert(v[SIZE].id == ID);
@@ -355,7 +326,7 @@ void Test4()
     {
         Obj::ResetCounters();
         Vector<Obj> v;
-        v.PushBack(Obj{ ID });
+        v.PushBack(Obj{ID});
         v.PopBack();
         assert(v.Size() == 0);
         assert(v.Capacity() == 1);
@@ -382,8 +353,7 @@ void Test4()
     }
 }
 
-void Test5()
-{
+void Test5() {
     const int ID = 42;
     using namespace std::literals;
     {
@@ -410,18 +380,14 @@ void Test5()
     }
 }
 
-int main()
-{
-    try
-    {
+int main() {
+    try {
         Test1();
         Test2();
         Test3();
         Test4();
         Test5();
-    }
-    catch (const std::exception& e)
-    {
+    } catch (const std::exception& e) {
         std::cerr << e.what() << std::endl;
     }
 }
